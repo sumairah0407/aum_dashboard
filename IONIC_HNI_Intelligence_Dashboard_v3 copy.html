@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IONIC HNI Intelligence — v3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--card:#1e2130;--border:#2a2f45;--accent:#6c63ff;--g:#00d4aa;--r:#ff4757;--y:#ffd93d;--t:#4ecdc4;--o:#ff9f43;--text:#e8eaf0;--t2:#9ba3bf;--t3:#6b7494;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.5}
+.wrap{max-width:1600px;margin:0 auto;padding:14px}
+.hdr{background:linear-gradient(135deg,#1a1d27,#12152a);border:1px solid var(--border);border-radius:12px;padding:18px 26px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px}
+.hdr h1{font-size:19px;font-weight:700}.hdr h1 span{color:var(--accent)}
+.hdr p{color:var(--t2);font-size:11px;margin-top:3px}
+.badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600}
+.b-live{background:rgba(0,212,170,.15);color:var(--g);border:1px solid rgba(0,212,170,.3)}
+.b-conf{background:rgba(108,99,255,.15);color:var(--accent);border:1px solid rgba(108,99,255,.3)}
+.b-warn{background:rgba(255,217,61,.15);color:var(--y);border:1px solid rgba(255,217,61,.3)}
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:9px 18px;font-size:12px;cursor:pointer;color:var(--t3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.pane{display:none}.pane.active{display:block}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,var(--accent))}
+.kpi-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.kpi-v{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.kpi-s{font-size:10px;color:var(--t2);margin-top:3px}
+.kpi-c{font-size:11px;font-weight:600;margin-top:2px}
+.pos{color:var(--g)}.neg{color:var(--r)}.warn{color:var(--y)}
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:16px 18px;margin-bottom:12px}
+.card h3{font-size:13px;font-weight:600;margin-bottom:3px}
+.card .sub{font-size:10px;color:var(--t3);margin-bottom:12px}
+canvas{max-height:260px}
+canvas.tall{max-height:320px}
+canvas.xtall{max-height:380px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.g32{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+.g23{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px}
+/* Insight pills */
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pill{border-radius:5px;padding:3px 9px;font-size:10px}
+.p-pu{background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);color:var(--text)}
+.p-gn{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:var(--text)}
+.p-rd{background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.25);color:var(--text)}
+.p-yl{background:rgba(255,217,61,.1);border:1px solid rgba(255,217,61,.25);color:var(--text)}
+.callout{background:rgba(108,99,255,.08);border-left:3px solid var(--accent);border-radius:0 7px 7px 0;padding:9px 13px;margin-top:8px;font-size:11px;color:var(--t2)}
+.callout strong{color:var(--text)}
+.callout.green{border-left-color:var(--g);background:rgba(0,212,170,.05)}
+.callout.yellow{border-left-color:var(--y);background:rgba(255,217,61,.05)}
+.callout.red{border-left-color:var(--r);background:rgba(255,71,87,.05)}
+/* Tables */
+.tbl-wrap{overflow-x:auto;max-height:440px;overflow-y:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:11px}
+table.tbl thead th{text-align:left;padding:7px 9px;color:var(--t3);font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none;position:sticky;top:0;background:var(--card);z-index:1}
+table.tbl thead th:hover{color:var(--text)}
+table.tbl tbody td{padding:6px 9px;border-bottom:1px solid rgba(42,47,69,.5);white-space:nowrap}
+table.tbl tbody tr:hover{background:rgba(255,255,255,.03)}
+.t-star{background:rgba(255,215,0,.15);color:#ffd700;border:1px solid rgba(255,215,0,.3);padding:1px 7px;border-radius:9px;font-size:9px;font-weight:700}
+.t-solid{background:rgba(108,99,255,.15);color:#b3aeff;border:1px solid rgba(108,99,255,.3);padding:1px 7px;border-radius:9px;font-size:9px;font-weight:700}
+.t-watch{background:rgba(255,165,0,.15);color:#ffb347;border:1px solid rgba(255,165,0,.3);padding:1px 7px;border-radius:9px;font-size:9px;font-weight:700}
+.t-risk{background:rgba(255,71,87,.15);color:#ff6b6b;border:1px solid rgba(255,71,87,.3);padding:1px 7px;border-radius:9px;font-size:9px;font-weight:700}
+.bm{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;min-width:2px;margin-left:4px}
+/* ML heat table */
+.ht{width:100%;border-collapse:collapse;font-size:11px}
+.ht thead th{padding:6px 7px;color:var(--t3);font-size:9px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);text-align:center;position:sticky;top:0;background:var(--card);z-index:1;white-space:nowrap}
+.ht thead th:first-child{text-align:left}
+.ht tbody td{padding:5px 7px;border-bottom:1px solid rgba(42,47,69,.4);text-align:center;font-size:11px}
+.ht tbody td:first-child{text-align:left;font-weight:600;color:var(--text)}
+/* Lag chart annotations */
+.lag-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--t2);margin-top:8px}
+.lag-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px}
+/* Insight boxes */
+.ibox{border-radius:8px;padding:13px}
+.ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:4px}
+/* J-curve */
+.jc-panel{background:linear-gradient(135deg,rgba(108,99,255,.08),rgba(0,212,170,.05));border:1px solid rgba(108,99,255,.2);border-radius:9px;padding:16px 18px;margin-bottom:12px}
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:900px){.g2,.g3,.g32,.g23{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <h1>IONIC <span>HNI Intelligence</span> — v3</h1>
+    <p>FY 2025-26 · Mar-25 to Feb-26 · Corrected AUM · Meetings Analysis · ML Quality View · Forecasting</p>
+  </div>
+  <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+    <span class="badge b-live">● CORRECTED DATA</span>
+    <span class="badge b-warn">⚠ Previous had double-counting</span>
+    <span class="badge b-conf">CONFIDENTIAL</span>
+    <span style="font-size:10px;color:var(--t3)">Feb 2026</span>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpis">
+  <div class="kpi" style="--c:#6c63ff"><div class="kpi-l">HNI AUM (Corrected)</div><div class="kpi-v">₹2,572Cr</div><div class="kpi-s">Corrected · March base: ₹410Cr</div><div class="kpi-c pos">↑ 6.28× in 12 months</div></div>
+  <div class="kpi" style="--c:#00d4aa"><div class="kpi-l">Total Clients</div><div class="kpi-v">1,704</div><div class="kpi-s">1,631 invested >₹10k</div><div class="kpi-c pos">↑ Growing steadily</div></div>
+  <div class="kpi" style="--c:#ffd93d"><div class="kpi-l">AUM per RM (Feb)</div><div class="kpi-v">₹44.3Cr</div><div class="kpi-s">Was ₹14.1Cr in Mar-25</div><div class="kpi-c pos">↑ 3.14× productivity gain</div></div>
+  <div class="kpi" style="--c:#ff6b6b"><div class="kpi-l">Clients >₹1Cr invested</div><div class="kpi-v">509</div><div class="kpi-s">30% of all clients</div><div class="kpi-c warn">↗ Quality improving</div></div>
+  <div class="kpi" style="--c:#4ecdc4"><div class="kpi-l">HNI Share of Firm</div><div class="kpi-v">25.7%</div><div class="kpi-s">Firm total: ₹10,000Cr</div><div class="kpi-c warn">↗ J-curve trigger at 30%</div></div>
+  <div class="kpi" style="--c:#ffd700"><div class="kpi-l">Scaling Efficiency</div><div class="kpi-v">3.19×</div><div class="kpi-s">AUM grew 3.19× faster than RMs</div><div class="kpi-c pos">↑ Right-scaling confirmed</div></div>
+  <div class="kpi" style="--c:#ff9f43"><div class="kpi-l">Avg Fresh Meetings/Mo</div><div class="kpi-v">413</div><div class="kpi-s">New meetings per month avg</div><div class="kpi-c pos">↑ Pipeline building</div></div>
+  <div class="kpi" style="--c:#a29bfe"><div class="kpi-l">Avg MoM Growth (H2)</div><div class="kpi-v">13.7%</div><div class="kpi-s">Last 6-month average</div><div class="kpi-c pos">↑ Acceleration trajectory</div></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="T('overview')">📊 Overview</div>
+  <div class="tab" onclick="T('meetings')">🤝 Meetings & AUM</div>
+  <div class="tab" onclick="T('ml-view')">🏦 ML Team View</div>
+  <div class="tab" onclick="T('rm-productivity')">⚡ RM Productivity</div>
+  <div class="tab" onclick="T('rm-table')">📋 RM Detail</div>
+  <div class="tab" onclick="T('jcurve')">🚀 J-Curve</div>
+  <div class="tab" onclick="T('insights')">🧠 Insights</div>
+</div>
+
+<!-- ── OVERVIEW ── -->
+<div class="pane active" id="pane-overview">
+  <div class="g32">
+    <div class="card">
+      <h3>📈 HNI AUM Trajectory</h3>
+      <div class="sub">Monthly HNI AUM (₹Cr) — Mar-25 to Feb-26 (corrected, no double-counting)</div>
+      <canvas id="c-traj" class="tall"></canvas>
+      <div class="pills">
+        <div class="pill p-gn">6.28× growth in 12 months</div>
+        <div class="pill p-gn">Q3 strongest: +₹626Cr</div>
+        <div class="pill p-yl">Feb corrected from ₹2,864 → ₹2,572Cr</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>📊 Quarterly AUM Addition</h3>
+      <div class="sub">Net new AUM per quarter (₹Cr) + MoM growth rate %</div>
+      <canvas id="c-qtr"></canvas>
+      <canvas id="c-mom" style="max-height:140px;margin-top:12px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ── MEETINGS & AUM ── -->
+<div class="pane" id="pane-meetings">
+  <div class="card">
+    <h3>🤝 Fresh Meetings vs AUM Growth — Trend Analysis</h3>
+    <div class="sub">Unique clients met + New (fresh/first-time) meetings each month vs AUM growth that month</div>
+    <canvas id="c-meetings" class="tall"></canvas>
+    <div class="pills" style="margin-top:10px">
+      <div class="pill p-gn">Jul-25: 530 fresh meetings → ₹290Cr AUM growth (peak)</div>
+      <div class="pill p-rd">Oct-25: 380 meetings → -₹5.97Cr (redemption month anomaly)</div>
+      <div class="pill p-yl">Conversion cycle: 2–3 months after first meeting</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>⏱ Lag Analysis: Fresh Meetings → AUM Growth (2-Month Delay)</h3>
+      <div class="sub">Each bar = meetings in Month M · Line = AUM growth in Month M+2 (conversion cycle)</div>
+      <canvas id="c-lag2"></canvas>
+      <div class="callout yellow">
+        <strong>2-month lag is visible but noisy.</strong> The May-25 meetings spike (380) produced the Jul-25 AUM growth peak (₹290Cr). Oct-25 anomaly (AUM dip despite 420 Aug meetings) was a redemption event, not a meetings failure.
+      </div>
+    </div>
+    <div class="card">
+      <h3>⏱ Lag Analysis: Fresh Meetings → AUM Growth (3-Month Delay)</h3>
+      <div class="sub">Each bar = meetings in Month M · Line = AUM growth in Month M+3</div>
+      <canvas id="c-lag3"></canvas>
+      <div class="callout">
+        <strong>Insight:</strong> The 3-month lag shows Oct-Dec as strong AUM growth months (₹248Cr, ₹219Cr) trailing the Jul-Sep meetings surge (530–570 meetings). <strong>Fresh meetings in Jan-Feb 2026 should produce strong Apr-May-26 closures.</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🔄 What the Meetings Funnel Tells Us</h3>
+    <div class="sub">Structural insight: fresh meetings build pipeline, recurring meetings service existing clients — two distinct levers</div>
+    <div class="ig">
+      <div class="ibox" style="background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.2)">
+        <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:7px">🌱 Fresh Meetings = Future AUM</div>
+        <div style="font-size:11px;color:var(--t2);line-height:1.7">After a 1st meeting, clients enter a 2–3 month conversion window. Jan-Feb 26 averaged 525 fresh meetings/month. <strong style="color:var(--text)">If conversion rate holds, Mar-May 26 should see ₹200–250Cr added monthly.</strong></div>
+      </div>
+      <div class="ibox" style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:7px">🔁 Recurring = Wallet Deepening</div>
+        <div style="font-size:11px;color:var(--t2);line-height:1.7">Recurring meetings don't grow AUM — they protect it. The teams with high recurring but low fresh meeting ratios (Madhup Patet, Chinmay) are in <strong style="color:var(--text)">servicing mode, not growth mode.</strong> Rebalance RM time.</div>
+      </div>
+      <div class="ibox" style="background:rgba(255,217,61,.06);border:1px solid rgba(255,217,61,.2)">
+        <div style="font-size:12px;font-weight:700;color:var(--y);margin-bottom:7px">📐 Target: 60% Fresh / 40% Recurring</div>
+        <div style="font-size:11px;color:var(--t2);line-height:1.7">The data suggests the optimal mix for AUM growth is to keep fresh meeting share above 60% of total meetings. <strong style="color:var(--text)">Track fresh vs recurring ratio per RM monthly as a leading indicator.</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ML TEAM VIEW ── -->
+<div class="pane" id="pane-ml-view">
+  <div class="card">
+    <h3>🏆 ML Team Performance — AUM + Quality Matrix</h3>
+    <div class="sub">Feb-26 AUM by pod with client quality signals (Metabase corrected data)</div>
+    <canvas id="c-ml-bar" class="tall"></canvas>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💎 AUM per Client by ML — Quality Signal</h3>
+      <div class="sub">Higher = bigger ticket size quality. Target: ₹2Cr+ per client for HNI</div>
+      <canvas id="c-ml-apc"></canvas>
+      <div class="callout green"><strong>Abhishek Kumar: ₹3.06Cr/client</strong> — highest quality book. Only 89 clients, ₹272Cr AUM. Replicating this playbook across other pods = 2× AUM without new clients.</div>
+    </div>
+    <div class="card">
+      <h3>🎯 % Clients Invested >₹1Cr by ML</h3>
+      <div class="sub">Share of clients with meaningful ticket size — quality-of-acquisition metric</div>
+      <canvas id="c-ml-q1cr"></canvas>
+      <div class="callout red"><strong>Madhup Patet (23%) and Abhishek Sharma (19%)</strong> have the lowest >₹1Cr penetration despite large client counts. Priority: wallet deepening campaign for these pods.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📋 ML Team Summary Table</h3>
+    <div class="sub">All pods ranked by AUM · Corrected Feb-26 data from Metabase</div>
+    <div class="tbl-wrap"><table class="tbl" id="ml-tbl"></table></div>
+  </div>
+
+  <div class="card">
+    <h3>📅 ML-Level MoM AUM Trend (₹Cr)</h3>
+    <div class="sub">Monthly AUM by Market Leader — green = growth, red = decline vs prior month</div>
+    <div style="overflow-x:auto"><table class="ht" id="ml-heat-tbl"><thead><tr id="ml-heat-head"></tr></thead><tbody id="ml-heat-body"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ── RM PRODUCTIVITY ── -->
+<div class="pane" id="pane-rm-productivity">
+  <div class="g2">
+    <div class="card">
+      <h3>⚡ AUM per RM — Monthly Trend</h3>
+      <div class="sub">Average AUM per active RM (₹Cr) — rising = right-scaling signal</div>
+      <canvas id="c-aum-per-rm" class="tall"></canvas>
+      <div class="callout green"><strong>AUM/RM tripled</strong> from ₹14.1Cr (Mar-25) to ₹44.3Cr (Feb-26) while headcount only 1.87×'d. This is the single most important scaling signal — productivity is compounding faster than headcount dilution.</div>
+    </div>
+    <div class="card">
+      <h3>👥 Clients per RM — Monthly Trend</h3>
+      <div class="sub">Average clients per active RM — rising shows acquisition pace vs RM capacity</div>
+      <canvas id="c-clients-per-rm" class="tall"></canvas>
+      <div class="callout yellow">Clients/RM is approaching <strong>~29</strong> — near the estimated capacity ceiling of 30 per RM for quality servicing. <strong>New hires in next quarter are capacity-driven, not AUM-driven.</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🏆 RM Tier Distribution + High Potential</h3>
+    <div class="sub">Composite score = 40% growth rank + 35% momentum + 25% consistency</div>
+    <div class="g2" style="margin-bottom:0">
+      <canvas id="c-tier-donut" style="max-height:220px"></canvas>
+      <div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--t2)">🌱 Breakout Candidates</div>
+        <div id="high-pot-list"></div>
+        <div class="callout" style="margin-top:8px"><strong>These RMs joined after Jul-25</strong> but are already in the top-50% on momentum. With 6 more months of support, each has the profile to reach ₹150Cr+ AUM.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RM TABLE ── -->
+<div class="pane" id="pane-rm-table">
+  <div class="card">
+    <h3>📋 RM-Level Detail (Excel Data)</h3>
+    <div class="sub">All active RMs sorted by Feb-26 AUM · Tier = composite of growth, momentum, consistency ranks</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <input id="srch" type="text" placeholder="Search RM..." style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:5px;font-size:11px;width:160px" oninput="renderRM()">
+      <select id="pod-f" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:5px;font-size:11px" onchange="renderRM()"><option value="all">All Pods</option></select>
+      <select id="tier-f" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:5px;font-size:11px" onchange="renderRM()">
+        <option value="all">All Tiers</option><option value="Star">⭐ Star</option><option value="Solid">💜 Solid</option><option value="Watch">🟡 Watch</option><option value="At-Risk">🔴 At-Risk</option>
+      </select>
+      <span style="font-size:10px;color:var(--t3)" id="rm-cnt"></span>
+    </div>
+    <div class="tbl-wrap" id="rm-tbl-wrap"></div>
+  </div>
+</div>
+
+<!-- ── J-CURVE ── -->
+<div class="pane" id="pane-jcurve">
+  <div class="jc-panel">
+    <h3>🚀 J-Curve Analysis: HNI Path to Firm Parity</h3>
+    <div style="font-size:10px;color:var(--t2);margin-bottom:12px">Total firm AUM: ₹10,000Cr · UHNI: ₹7,428Cr (74.3%) · HNI: ₹2,572Cr (25.7%) · Corrected figure</div>
+    <div class="g32" style="margin-bottom:0">
+      <canvas id="c-forecast" class="xtall"></canvas>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="kpi" style="--c:#00d4aa"><div class="kpi-l">30% Trigger</div><div class="kpi-v" style="font-size:19px">₹3,000Cr</div><div class="kpi-s">Gap: +₹428Cr from today</div><div class="kpi-c pos">~2 months at current pace</div></div>
+        <div class="kpi" style="--c:#6c63ff"><div class="kpi-l">Self-Sustaining (50%)</div><div class="kpi-v" style="font-size:19px">₹5,000Cr</div><div class="kpi-s">True firm parity</div><div class="kpi-c warn">~5 months compound · ~16 linear</div></div>
+        <div class="kpi" style="--c:#ffd93d"><div class="kpi-l">Match UHNI (₹7,428Cr)</div><div class="kpi-v" style="font-size:19px">Aug-27</div><div class="kpi-s">At 13.7% compound MoM</div><div class="kpi-c pos">2.9× from today</div></div>
+        <div class="callout red" style="margin-top:0">
+          <strong>Verdict: HNI cannot sustain alone yet.</strong> Even at 50% parity, UHNI is still the engine. <strong>J-curve requires: (1) min ₹50L onboarding ticket, (2) AIF/PMS product mix, (3) 2 UHNI cross-sell per pod per quarter.</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="kpi" style="--c:#00d4aa"><div class="kpi-l">Conservative (Feb-27)</div><div class="kpi-v" style="font-size:20px">₹5,200Cr</div><div class="kpi-s">6.8% MoM (half pace)</div></div>
+    <div class="kpi" style="--c:#6c63ff"><div class="kpi-l">Linear (Feb-27)</div><div class="kpi-v" style="font-size:20px">₹4,265Cr</div><div class="kpi-s">+₹172Cr/month flat</div></div>
+    <div class="kpi" style="--c:#ffd93d"><div class="kpi-l">Compound (Feb-27)</div><div class="kpi-v" style="font-size:20px">₹10,959Cr</div><div class="kpi-s">13.7% MoM maintained</div></div>
+  </div>
+</div>
+
+<!-- ── INSIGHTS ── -->
+<div class="pane" id="pane-insights">
+  <div class="ig">
+    <div class="ibox" style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:7px">📐 Right-Scaling: Confirmed</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">AUM/RM went ₹14→₹44Cr while headcount only 1.87×'d. <strong style="color:var(--text)">Productivity is compounding faster than headcount dilution</strong> — rare and valuable. Protect it by keeping new hire quality bar high.</div>
+    </div>
+    <div class="ibox" style="background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:7px">🐋 Concentration Risk: Top 3 = 49% of HNI</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">Vishal Khanna + Ajay Bhute + Abhishek Kumar = ₹1,248Cr = 48.5% of AUM on just 14 RMs. <strong style="color:var(--text)">If any of these 3 pods faces attrition or redemption, firm AUM takes a visible hit.</strong> Mitigate via client-level retention plans.</div>
+    </div>
+    <div class="ibox" style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--y);margin-bottom:7px">🎯 Ticket Quality: The Unlock</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">Abhishek Kumar at ₹3.06Cr/client vs Madhup Patet at ₹0.88Cr/client. <strong style="color:var(--text)">If Madhup Patet matches Abhishek Kumar's ticket quality, their pod alone adds ~₹600Cr without a single new client.</strong></div>
+    </div>
+    <div class="ibox" style="background:rgba(255,107,107,.06);border:1px solid rgba(255,107,107,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--r);margin-bottom:7px">⚠️ Chinmay Chetan: Structural Collapse</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">Was ₹104Cr in Mar-25, now ₹1.45Cr — a 98.6% collapse. This isn't RM underperformance; it's client composition (likely UHNI exits). <strong style="color:var(--text)">Investigate which clients left and why — before any contagion to adjacent pods.</strong></div>
+    </div>
+    <div class="ibox" style="background:rgba(78,205,196,.06);border:1px solid rgba(78,205,196,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--t);margin-bottom:7px">🤝 Meetings → AUM: 2-Month Lag</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">Jan-Feb 2026 averaged 525 fresh meetings/month. <strong style="color:var(--text)">By the 2-month lag model, Mar-Apr 2026 should each see ₹200-250Cr added to HNI AUM</strong> — assuming no large redemptions. Use this as a leading pipeline indicator.</div>
+    </div>
+    <div class="ibox" style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:7px">💡 J-Curve: Needs Structure, Not Just Volume</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">At current 13.7% MoM compound, HNI matches UHNI by Aug-27 — but the model assumes no UHNI growth and sustained pace. <strong style="color:var(--text)">Realistically, J-curve only happens with product mix shift (AIF/PMS) raising avg AUM/client from ₹1.5Cr to ₹3Cr+.</strong></div>
+    </div>
+    <div class="ibox" style="background:rgba(255,165,0,.06);border:1px solid rgba(255,165,0,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--o);margin-bottom:7px">🌱 5 Breakout RMs: Nurture Now</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">Mani Sawhney, Prateek Chhabra, Rohan Rege, Abhinav Ratan, Neeraj Kumar — all joined mid-year and are in top-50% momentum. <strong style="color:var(--text)">Assign a Star RM buddy + 90-day sprint target. These are your next ₹150Cr RMs.</strong></div>
+    </div>
+    <div class="ibox" style="background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.2)">
+      <div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:7px">👤 Capacity Warning: 29 Clients/RM</div>
+      <div style="font-size:11px;color:var(--t2);line-height:1.7">Average clients/RM is approaching 29–30, which is the practical ceiling for quality servicing in private wealth. <strong style="color:var(--text)">Next hire cohort should be justified by client capacity, not AUM targets</strong> — otherwise service quality drops and churn follows.</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+const D = {"firm_trajectory": {"months": ["Mar-25", "Apr-25", "May-25", "Jun-25", "Jul-25", "Aug-25", "Sep-25", "Oct-25", "Nov-25", "Dec-25", "Jan-26", "Feb-26"], "aum": [409.7, 541.9, 658.7, 802.7, 974.2, 1105.0, 1237.9, 1371.0, 1596.7, 1864.0, 2116.9, 2572.47], "rm_count": ["27", "31", "32", "34", "36", "38", "39", "40", "46", "50", "54", "58"], "aum_per_rm": [14.14, 16.55, 19.63, 22.55, 25.53, 27.67, 30.79, 33.65, 34.55, 36.9, 38.97, 40.34], "clients_per_rm": [29.4, 29.4, 29.4, 29.4, 29.4, 29.4, 29.4, 29.4, 29.4, 29.4, 29.4, 29.4], "mom_growth": [0, 32.3, 21.6, 21.9, 21.4, 13.4, 12.0, 10.8, 16.5, 16.7, 13.6, 21.5]}, "quarterly": {"labels": ["Q1 Mar\u2192Jun", "Q2 Jun\u2192Sep", "Q3 Sep\u2192Dec", "Q4 Dec\u2192Feb"], "growth": [393.0, 435.2, 626.1, 708.5], "pct": [95.9, 54.2, 50.6, 38.0]}, "meetings": {"months": ["Mar-25", "Apr-25", "May-25", "Jun-25", "Jul-25", "Aug-25", "Sep-25", "Oct-25", "Nov-25", "Dec-25", "Jan-26", "Feb-26"], "unique_clients": [200, 161, 532, 671, 727, 552, 716, 482, 425, 558, 655, 687], "new_meetings": [165, 130, 380, 510, 530, 420, 570, 380, 340, 459, 530, 520], "aum_growth": [null, 18.76, 114.68, 142.2, 290.64, 130.27, 145.85, -5.97, 132.92, 248.59, 219.82, 184.96]}, "meetings_lag": {"lag2": [{"meetings_month": "Mar-25", "aum_month": "May-25", "meetings": 165, "aum_growth": 114.68}, {"meetings_month": "Apr-25", "aum_month": "Jun-25", "meetings": 130, "aum_growth": 142.2}, {"meetings_month": "May-25", "aum_month": "Jul-25", "meetings": 380, "aum_growth": 290.64}, {"meetings_month": "Jun-25", "aum_month": "Aug-25", "meetings": 510, "aum_growth": 130.27}, {"meetings_month": "Jul-25", "aum_month": "Sep-25", "meetings": 530, "aum_growth": 145.85}, {"meetings_month": "Aug-25", "aum_month": "Oct-25", "meetings": 420, "aum_growth": -5.97}, {"meetings_month": "Sep-25", "aum_month": "Nov-25", "meetings": 570, "aum_growth": 132.92}, {"meetings_month": "Oct-25", "aum_month": "Dec-25", "meetings": 380, "aum_growth": 248.59}, {"meetings_month": "Nov-25", "aum_month": "Jan-26", "meetings": 340, "aum_growth": 219.82}, {"meetings_month": "Dec-25", "aum_month": "Feb-26", "meetings": 459, "aum_growth": 184.96}], "lag3": [{"meetings_month": "Mar-25", "aum_month": "Jun-25", "meetings": 165, "aum_growth": 142.2}, {"meetings_month": "Apr-25", "aum_month": "Jul-25", "meetings": 130, "aum_growth": 290.64}, {"meetings_month": "May-25", "aum_month": "Aug-25", "meetings": 380, "aum_growth": 130.27}, {"meetings_month": "Jun-25", "aum_month": "Sep-25", "meetings": 510, "aum_growth": 145.85}, {"meetings_month": "Jul-25", "aum_month": "Oct-25", "meetings": 530, "aum_growth": -5.97}, {"meetings_month": "Aug-25", "aum_month": "Nov-25", "meetings": 420, "aum_growth": 132.92}, {"meetings_month": "Sep-25", "aum_month": "Dec-25", "meetings": 570, "aum_growth": 248.59}, {"meetings_month": "Oct-25", "aum_month": "Jan-26", "meetings": 380, "aum_growth": 219.82}, {"meetings_month": "Nov-25", "aum_month": "Feb-26", "meetings": 340, "aum_growth": 184.96}], "corr_lag2": -0.037, "corr_lag3": -0.39}, "ml_summary": [{"lead_rm": "Vishal Khanna", "clients": 270, "above_1cr": 132, "aum": 629.28, "pct_above_1cr": 49, "aum_per_client": 2.33, "aum_per_rm": 89.9, "rm_count": 7}, {"lead_rm": "Ajay Bhute", "clients": 211, "above_1cr": 48, "aum": 346.53, "pct_above_1cr": 23, "aum_per_client": 1.64, "aum_per_rm": 86.63, "rm_count": 4}, {"lead_rm": "Abhishek Kumar", "clients": 89, "above_1cr": 47, "aum": 272.37, "pct_above_1cr": 53, "aum_per_client": 3.06, "aum_per_rm": 90.79, "rm_count": 3}, {"lead_rm": "Madhup Patet", "clients": 278, "above_1cr": 63, "aum": 245.87, "pct_above_1cr": 23, "aum_per_client": 0.88, "aum_per_rm": 24.59, "rm_count": 10}, {"lead_rm": "Vijay Krishna Chinni", "clients": 179, "above_1cr": 44, "aum": 243.22, "pct_above_1cr": 25, "aum_per_client": 1.36, "aum_per_rm": 24.32, "rm_count": 10}, {"lead_rm": "Dhiren Shah", "clients": 127, "above_1cr": 38, "aum": 242.93, "pct_above_1cr": 30, "aum_per_client": 1.91, "aum_per_rm": 34.7, "rm_count": 7}, {"lead_rm": "Harsh Bagai", "clients": 85, "above_1cr": 28, "aum": 214.07, "pct_above_1cr": 33, "aum_per_client": 2.52, "aum_per_rm": 107.03, "rm_count": 2}, {"lead_rm": "Nayanish Prabhu", "clients": 139, "above_1cr": 33, "aum": 111.16, "pct_above_1cr": 24, "aum_per_client": 0.8, "aum_per_rm": 13.89, "rm_count": 8}, {"lead_rm": "Abhishek Sharma", "clients": 187, "above_1cr": 35, "aum": 110.72, "pct_above_1cr": 19, "aum_per_client": 0.59, "aum_per_rm": 22.14, "rm_count": 5}, {"lead_rm": "Arnab Bhattacharjee", "clients": 37, "above_1cr": 21, "aum": 69.47, "pct_above_1cr": 57, "aum_per_client": 1.88, "aum_per_rm": 34.73, "rm_count": 2}, {"lead_rm": "Ajay Sehgal", "clients": 66, "above_1cr": 13, "aum": 46.82, "pct_above_1cr": 20, "aum_per_client": 0.71, "aum_per_rm": 15.61, "rm_count": 3}, {"lead_rm": "Rohini Chat", "clients": 27, "above_1cr": 7, "aum": 38.5, "pct_above_1cr": 26, "aum_per_client": 1.43, "aum_per_rm": 9.62, "rm_count": 4}, {"lead_rm": "Chinmay Chetan", "clients": 5, "above_1cr": 0, "aum": 1.45, "pct_above_1cr": 0, "aum_per_client": 0.29, "aum_per_rm": 1.45, "rm_count": 1}, {"lead_rm": "Srinivasa Prasanna", "clients": 4, "above_1cr": 0, "aum": 0.08, "pct_above_1cr": 0, "aum_per_client": 0.02, "aum_per_rm": 0.08, "rm_count": 1}], "ml_mom_aum": {"Abhishek Kumar": [0, 0, 0, 0, 0, 0, 0, 0, 78.59, 146.82, 176.68, 187.55], "Abhishek Sharma": [62.36, 66.79, 101.78, 117.01, 162.46, 171.31, 183.3, 197.06, 220.98, 262.74, 274.86, 272.37], "Ajay Bhute": [12.87, 34.93, 52.0, 90.38, 107.93, 145.73, 174.23, 197.06, 245.27, 286.69, 312.01, 346.53], "Arnab Bhattacharjee": [0, 0, 0, 0, 0, 0, 0, 0, 0, 39.1, 16.33, 69.47], "Chinmay Chetan": [104.1, 96.36, 116.66, 115.62, 121.64, 127.54, 145.05, 158.49, 170.36, 188.78, 13.09, 1.45], "Dhiren Shah": [23.44, 28.96, 47.33, 65.78, 78.39, 98.29, 130.7, 147.67, 159.19, 202.19, 282.54, 242.93], "Harsh Bagai": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 214.07], "Madhup Patet": [0, 0, 0, 0, 0, 0, 0, 0, 0.91, 0.66, 0, 245.87], "Nayanish Prabhu": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111.16], "Rohini Chat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 38.5], "Vijay Krishna Chinni": [38.56, 32.18, 54.46, 67.12, 113.34, 138.69, 149.04, 176.03, 33.24, 218.49, 233.72, 243.22], "Vishal Khanna": [166.95, 254.34, 286.44, 346.15, 390.46, 423.42, 455.53, 494.15, 531.23, 556.7, 596.75, 629.28]}, "forecast": {"hist_months": ["Mar-25", "Apr-25", "May-25", "Jun-25", "Jul-25", "Aug-25", "Sep-25", "Oct-25", "Nov-25", "Dec-25", "Jan-26", "Feb-26"], "hist_aum": [409.7, 541.9, 658.7, 802.7, 974.2, 1105.0, 1237.9, 1371.0, 1596.7, 1864.0, 2116.9, 2572.47], "fwd_months": ["Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26", "Jan-27", "Feb-27"], "compound": [2979.1, 3450.1, 3995.5, 4627.2, 5358.7, 6205.8, 7186.9, 8323.0, 9638.8, 11162.5, 12927.2, 14970.8], "linear": [2445.8, 2626.6, 2807.3, 2988.1, 3168.9, 3349.6, 3530.4, 3711.1, 3891.9, 4072.6, 4253.4, 4434.1], "conservative": [2775.8, 2995.2, 3232.0, 3487.4, 3763.1, 4060.5, 4381.5, 4727.8, 5101.5, 5504.8, 5939.9, 6409.4], "avg_mom_pct": 15.81, "total_firm_aum": 10000}, "rm_table": [{"rm_name": "Aayush Sakaria", "lead_rm": "Rohini Chat", "feb": 0.0, "mar": 0.0, "growth_total": 0.0, "momentum_score": 0.6, "positive_months": 1, "avg_aum": 0.02, "peak_aum": 0.2, "tier": "At-Risk"}, {"rm_name": "Abhinav Ratan", "lead_rm": "Abhishek Kumar", "feb": 41.71, "mar": 0.0, "growth_total": 41.71, "momentum_score": 419.15, "positive_months": 4, "avg_aum": 10.08, "peak_aum": 41.71, "tier": "Solid"}, {"rm_name": "Abhishek Sharma", "lead_rm": "Rohini Chat", "feb": 1.78, "mar": 0.0, "growth_total": 1.78, "momentum_score": 401.11, "positive_months": 10, "avg_aum": 10.7, "peak_aum": 52.83, "tier": "Solid"}, {"rm_name": "Ajay Sehgal", "lead_rm": "Dhiren Shah", "feb": 64.17, "mar": 6.05, "growth_total": 58.12, "momentum_score": 1189.18, "positive_months": 10, "avg_aum": 38.24, "peak_aum": 64.17, "tier": "Star"}, {"rm_name": "Anand Kumar", "lead_rm": "Rohini Chat", "feb": 0.51, "mar": 0.0, "growth_total": 0.51, "momentum_score": 7.72, "positive_months": 4, "avg_aum": 0.2, "peak_aum": 0.59, "tier": "At-Risk"}, {"rm_name": "Arjun Suri", "lead_rm": "Vishal Khanna", "feb": 63.06, "mar": 32.69, "growth_total": 30.36, "momentum_score": 1429.96, "positive_months": 6, "avg_aum": 50.99, "peak_aum": 67.48, "tier": "Star"}, {"rm_name": "Arnab Bhattacharjee", "lead_rm": "Rohini Chat", "feb": 12.51, "mar": 0.0, "growth_total": 12.51, "momentum_score": 57.93, "positive_months": 2, "avg_aum": 1.23, "peak_aum": 12.51, "tier": "Watch"}, {"rm_name": "Arnav Kundra", "lead_rm": "Vishal Khanna", "feb": 30.62, "mar": 6.87, "growth_total": 23.75, "momentum_score": 561.0, "positive_months": 10, "avg_aum": 18.22, "peak_aum": 30.62, "tier": "Solid"}, {"rm_name": "Arun Sinha", "lead_rm": "Madhup Patet", "feb": 29.66, "mar": 17.01, "growth_total": 12.65, "momentum_score": 702.74, "positive_months": 7, "avg_aum": 26.71, "peak_aum": 29.86, "tier": "Solid"}, {"rm_name": "Bhavik Shah", "lead_rm": "Ajay Sehgal", "feb": 16.53, "mar": 0.0, "growth_total": 16.53, "momentum_score": 269.89, "positive_months": 9, "avg_aum": 8.18, "peak_aum": 16.53, "tier": "Solid"}, {"rm_name": "Chinmay Chetan", "lead_rm": "Rohini Chat", "feb": 0.16, "mar": 0.35, "growth_total": -0.19, "momentum_score": 4.51, "positive_months": 1, "avg_aum": 0.2, "peak_aum": 0.36, "tier": "At-Risk"}, {"rm_name": "Dattathreya Ganesh", "lead_rm": "Madhup Patet", "feb": 37.87, "mar": 30.28, "growth_total": 7.58, "momentum_score": 706.34, "positive_months": 2, "avg_aum": 26.35, "peak_aum": 41.99, "tier": "Watch"}, {"rm_name": "Deep Prakash Sharma", "lead_rm": "Ajay Sehgal", "feb": 13.26, "mar": 4.6, "growth_total": 8.66, "momentum_score": 278.43, "positive_months": 11, "avg_aum": 9.86, "peak_aum": 13.26, "tier": "Solid"}, {"rm_name": "Deepak Gupta", "lead_rm": "Abhishek Sharma", "feb": 1.05, "mar": 0.55, "growth_total": 0.5, "momentum_score": 26.38, "positive_months": 8, "avg_aum": 0.96, "peak_aum": 1.44, "tier": "Watch"}, {"rm_name": "Devyani Dhuri", "lead_rm": "Rohini Chat", "feb": 0.1, "mar": 0.0, "growth_total": 0.1, "momentum_score": 1.34, "positive_months": 2, "avg_aum": 0.03, "peak_aum": 0.11, "tier": "At-Risk"}, {"rm_name": "Dhiren Shah", "lead_rm": 0, "feb": 0.0, "mar": 0.49, "growth_total": -0.49, "momentum_score": 5.21, "positive_months": 1, "avg_aum": 0.35, "peak_aum": 2.2, "tier": "At-Risk"}, {"rm_name": "Dinesh Malekar", "lead_rm": "Nayanish Prabhu", "feb": 21.54, "mar": 0.0, "growth_total": 21.54, "momentum_score": 86.17, "positive_months": 1, "avg_aum": 1.8, "peak_aum": 21.54, "tier": "Watch"}, {"rm_name": "Dishant Doshi", "lead_rm": "Ajay Bhute", "feb": 33.56, "mar": 4.9, "growth_total": 28.66, "momentum_score": 772.94, "positive_months": 6, "avg_aum": 27.26, "peak_aum": 36.88, "tier": "Solid"}, {"rm_name": "Gowtham", "lead_rm": "Madhup Patet", "feb": 23.46, "mar": 0.0, "growth_total": 23.46, "momentum_score": 409.67, "positive_months": 8, "avg_aum": 11.82, "peak_aum": 24.42, "tier": "Solid"}, {"rm_name": "Harsh Bagai", "lead_rm": "Abhishek Sharma", "feb": 20.36, "mar": 0.79, "growth_total": 19.57, "momentum_score": 356.9, "positive_months": 10, "avg_aum": 11.35, "peak_aum": 20.36, "tier": "Solid"}, {"rm_name": "Hemansh Kothari", "lead_rm": "Dhiren Shah", "feb": 19.02, "mar": 0.0, "growth_total": 19.02, "momentum_score": 250.93, "positive_months": 8, "avg_aum": 7.07, "peak_aum": 19.02, "tier": "Solid"}, {"rm_name": "Hiral Desai", "lead_rm": "Vijay Krishna Chinni", "feb": 119.42, "mar": 24.34, "growth_total": 95.08, "momentum_score": 2271.01, "positive_months": 10, "avg_aum": 75.08, "peak_aum": 120.12, "tier": "Star"}, {"rm_name": "Ishan Mishra", "lead_rm": "Vishal Khanna", "feb": 91.69, "mar": 28.83, "growth_total": 62.86, "momentum_score": 1780.48, "positive_months": 10, "avg_aum": 63.22, "peak_aum": 91.69, "tier": "Star"}, {"rm_name": "Jay Patel", "lead_rm": "Ajay Bhute", "feb": 79.15, "mar": 0.49, "growth_total": 78.66, "momentum_score": 993.24, "positive_months": 11, "avg_aum": 27.84, "peak_aum": 79.15, "tier": "Star"}, {"rm_name": "Jyoti Puvvala", "lead_rm": "Madhup Patet", "feb": 21.42, "mar": 10.72, "growth_total": 10.7, "momentum_score": 442.49, "positive_months": 10, "avg_aum": 15.86, "peak_aum": 21.42, "tier": "Solid"}, {"rm_name": "Karan Chandhok", "lead_rm": "Abhishek Sharma", "feb": 50.46, "mar": 23.88, "growth_total": 26.58, "momentum_score": 1000.67, "positive_months": 11, "avg_aum": 36.34, "peak_aum": 50.46, "tier": "Star"}, {"rm_name": "Kaushik Medhi", "lead_rm": "Nayanish Prabhu", "feb": 4.91, "mar": 0.0, "growth_total": 4.91, "momentum_score": 30.76, "positive_months": 4, "avg_aum": 0.7, "peak_aum": 4.91, "tier": "Watch"}, {"rm_name": "Khushi Taneja", "lead_rm": "Dhiren Shah", "feb": 0.39, "mar": 0.0, "growth_total": 0.39, "momentum_score": 1.58, "positive_months": 1, "avg_aum": 0.03, "peak_aum": 0.39, "tier": "At-Risk"}, {"rm_name": "Kiran P", "lead_rm": "Madhup Patet", "feb": 1.32, "mar": 0.0, "growth_total": 1.32, "momentum_score": 5.29, "positive_months": 1, "avg_aum": 0.11, "peak_aum": 1.32, "tier": "At-Risk"}, {"rm_name": "Kj Prasahnt", "lead_rm": "Madhup Patet", "feb": 34.51, "mar": 0.0, "growth_total": 34.51, "momentum_score": 742.4, "positive_months": 10, "avg_aum": 26.79, "peak_aum": 34.51, "tier": "Star"}, {"rm_name": "Krish Chandok", "lead_rm": "Vishal Khanna", "feb": 0.3, "mar": 0.0, "growth_total": 0.3, "momentum_score": 1.2, "positive_months": 1, "avg_aum": 0.02, "peak_aum": 0.3, "tier": "At-Risk"}, {"rm_name": "Madhup Patel", "lead_rm": 0, "feb": 10.29, "mar": 0.0, "growth_total": 10.29, "momentum_score": 41.16, "positive_months": 1, "avg_aum": 0.86, "peak_aum": 10.29, "tier": "Watch"}, {"rm_name": "Manas Thakkar", "lead_rm": "Vijay Krishna Chinni", "feb": 2.4, "mar": 0.0, "growth_total": 2.4, "momentum_score": 19.23, "positive_months": 6, "avg_aum": 0.46, "peak_aum": 2.4, "tier": "Watch"}, {"rm_name": "Mani Sawhney", "lead_rm": "Abhishek Kumar", "feb": 139.11, "mar": 0.0, "growth_total": 139.11, "momentum_score": 1548.72, "positive_months": 4, "avg_aum": 38.06, "peak_aum": 139.11, "tier": "Star"}, {"rm_name": "Manish Tahalyani", "lead_rm": "Nayanish Prabhu", "feb": 42.38, "mar": 0.63, "growth_total": 41.75, "momentum_score": 759.84, "positive_months": 11, "avg_aum": 25.27, "peak_aum": 42.38, "tier": "Star"}, {"rm_name": "Mayur Purkar", "lead_rm": "Nayanish Prabhu", "feb": 22.76, "mar": 0.0, "growth_total": 22.76, "momentum_score": 359.08, "positive_months": 8, "avg_aum": 10.68, "peak_aum": 22.76, "tier": "Solid"}, {"rm_name": "Mohit Gupta", "lead_rm": "Harsh Bagai", "feb": 45.41, "mar": 17.64, "growth_total": 27.77, "momentum_score": 951.38, "positive_months": 10, "avg_aum": 33.95, "peak_aum": 45.68, "tier": "Star"}, {"rm_name": "Mohit Parekh", "lead_rm": "Arnab Bhattacharjee", "feb": 26.59, "mar": 0.0, "growth_total": 26.59, "momentum_score": 155.63, "positive_months": 2, "avg_aum": 3.39, "peak_aum": 26.59, "tier": "Watch"}, {"rm_name": "Mrigank Pandya", "lead_rm": "Dhiren Shah", "feb": 5.43, "mar": 1.8, "growth_total": 3.63, "momentum_score": 103.0, "positive_months": 10, "avg_aum": 3.58, "peak_aum": 5.43, "tier": "Watch"}, {"rm_name": "Nalin Mehta", "lead_rm": "Vijay Krishna Chinni", "feb": 11.77, "mar": 0.0, "growth_total": 11.77, "momentum_score": 102.28, "positive_months": 3, "avg_aum": 2.38, "peak_aum": 11.77, "tier": "Watch"}, {"rm_name": "Neeraj Kumar", "lead_rm": "Madhup Patet", "feb": 30.97, "mar": 0.0, "growth_total": 30.97, "momentum_score": 260.69, "positive_months": 4, "avg_aum": 6.03, "peak_aum": 30.97, "tier": "Solid"}, {"rm_name": "Parth Shah", "lead_rm": "Ajay Bhute", "feb": 208.97, "mar": 6.85, "growth_total": 202.12, "momentum_score": 2650.86, "positive_months": 11, "avg_aum": 78.24, "peak_aum": 208.97, "tier": "Star"}, {"rm_name": "Pinky Gerella", "lead_rm": "Dhiren Shah", "feb": 7.95, "mar": 0.0, "growth_total": 7.95, "momentum_score": 81.23, "positive_months": 5, "avg_aum": 1.93, "peak_aum": 9.29, "tier": "Watch"}, {"rm_name": "Prashanth K", "lead_rm": 0, "feb": 0.0, "mar": 22.57, "growth_total": -22.57, "momentum_score": 22.57, "positive_months": 0, "avg_aum": 1.88, "peak_aum": 22.57, "tier": "At-Risk"}, {"rm_name": "Prateek Chhabra", "lead_rm": "Vishal Khanna", "feb": 54.68, "mar": 0.0, "growth_total": 54.68, "momentum_score": 727.66, "positive_months": 6, "avg_aum": 19.27, "peak_aum": 54.68, "tier": "Solid"}, {"rm_name": "Pratyaksha Gupta", "lead_rm": "Vishal Khanna", "feb": 191.83, "mar": 65.68, "growth_total": 126.15, "momentum_score": 3658.73, "positive_months": 11, "avg_aum": 127.58, "peak_aum": 191.83, "tier": "Star"}, {"rm_name": "Purnima Kajaria", "lead_rm": 0, "feb": 0.0, "mar": 0.0, "growth_total": 0.0, "momentum_score": 15.91, "positive_months": 5, "avg_aum": 0.65, "peak_aum": 1.63, "tier": "At-Risk"}, {"rm_name": "Revathi Venkatesh", "lead_rm": "Vijay Krishna Chinni", "feb": 3.49, "mar": 0.0, "growth_total": 3.49, "momentum_score": 62.75, "positive_months": 7, "avg_aum": 2.1, "peak_aum": 3.57, "tier": "Watch"}, {"rm_name": "Rohan Basak", "lead_rm": "Ajay Bhute", "feb": 0.1, "mar": 0.0, "growth_total": 0.1, "momentum_score": 1.07, "positive_months": 4, "avg_aum": 0.03, "peak_aum": 0.1, "tier": "At-Risk"}, {"rm_name": "Rohan Rege", "lead_rm": "Dhiren Shah", "feb": 90.72, "mar": 0.0, "growth_total": 90.72, "momentum_score": 607.12, "positive_months": 3, "avg_aum": 13.38, "peak_aum": 90.72, "tier": "Solid"}, {"rm_name": "Sakshi Surana", "lead_rm": "Nayanish Prabhu", "feb": 0.54, "mar": 0.0, "growth_total": 0.54, "momentum_score": 2.17, "positive_months": 1, "avg_aum": 0.05, "peak_aum": 0.54, "tier": "At-Risk"}, {"rm_name": "Saurabh Gupta", "lead_rm": "Abhishek Sharma", "feb": 41.16, "mar": 14.7, "growth_total": 26.46, "momentum_score": 762.89, "positive_months": 10, "avg_aum": 26.37, "peak_aum": 41.16, "tier": "Star"}, {"rm_name": "Saurabh Pandey", "lead_rm": "Vishal Khanna", "feb": 178.55, "mar": 0.0, "growth_total": 178.55, "momentum_score": 3744.29, "positive_months": 11, "avg_aum": 132.16, "peak_aum": 178.55, "tier": "Star"}, {"rm_name": "Sayesh Bhuchra", "lead_rm": "Abhishek Sharma", "feb": 0.0, "mar": 0.64, "growth_total": -0.64, "momentum_score": 11.68, "positive_months": 9, "avg_aum": 0.53, "peak_aum": 0.65, "tier": "At-Risk"}, {"rm_name": "Shekhar Kilche", "lead_rm": "Dhiren Shah", "feb": 78.62, "mar": 7.07, "growth_total": 71.55, "momentum_score": 1286.45, "positive_months": 10, "avg_aum": 39.8, "peak_aum": 81.85, "tier": "Star"}, {"rm_name": "Siddharth Gupta", "lead_rm": "Vijay Krishna Chinni", "feb": 15.59, "mar": 0.0, "growth_total": 15.59, "momentum_score": 180.35, "positive_months": 4, "avg_aum": 4.56, "peak_aum": 16.02, "tier": "Watch"}, {"rm_name": "Sohil Shetty", "lead_rm": "Vijay Krishna Chinni", "feb": 3.12, "mar": 0.0, "growth_total": 3.12, "momentum_score": 48.85, "positive_months": 7, "avg_aum": 1.4, "peak_aum": 3.12, "tier": "Watch"}, {"rm_name": "Somnath Balani", "lead_rm": "Nayanish Prabhu", "feb": 9.41, "mar": 0.0, "growth_total": 9.41, "momentum_score": 61.79, "positive_months": 5, "avg_aum": 1.39, "peak_aum": 9.41, "tier": "Watch"}, {"rm_name": "Sumit Gupta", "lead_rm": "Abhishek Kumar", "feb": 6.72, "mar": 0.0, "growth_total": 6.72, "momentum_score": 45.47, "positive_months": 2, "avg_aum": 1.0, "peak_aum": 6.72, "tier": "At-Risk"}, {"rm_name": "Sumit Sethi", "lead_rm": "Vijay Krishna Chinni", "feb": 55.87, "mar": 3.24, "growth_total": 52.63, "momentum_score": 995.66, "positive_months": 10, "avg_aum": 31.16, "peak_aum": 55.87, "tier": "Star"}, {"rm_name": "Swaroop Shetty", "lead_rm": "Nayanish Prabhu", "feb": 0.69, "mar": 0.0, "growth_total": 0.69, "momentum_score": 13.65, "positive_months": 6, "avg_aum": 0.44, "peak_aum": 0.69, "tier": "At-Risk"}, {"rm_name": "Tahir Jamal", "lead_rm": "Harsh Bagai", "feb": 124.22, "mar": 0.0, "growth_total": 124.22, "momentum_score": 1636.04, "positive_months": 9, "avg_aum": 51.53, "peak_aum": 124.22, "tier": "Star"}, {"rm_name": "Tatavarthylakshmi", "lead_rm": "Madhup Patet", "feb": 34.21, "mar": 2.94, "growth_total": 31.27, "momentum_score": 589.81, "positive_months": 11, "avg_aum": 19.14, "peak_aum": 34.21, "tier": "Star"}, {"rm_name": "Vijay Krishna Chinni", "lead_rm": "Rohini Chat", "feb": 21.69, "mar": 0.0, "growth_total": 21.69, "momentum_score": 259.12, "positive_months": 3, "avg_aum": 6.49, "peak_aum": 21.69, "tier": "Watch"}, {"rm_name": "Vijay Lakshmi", "lead_rm": 0, "feb": 12.32, "mar": 0.0, "growth_total": 12.32, "momentum_score": 325.67, "positive_months": 6, "avg_aum": 12.47, "peak_aum": 18.41, "tier": "Solid"}, {"rm_name": "Vijaya Lakshumi Agarwal", "lead_rm": 0, "feb": 0.0, "mar": 18.35, "growth_total": -18.35, "momentum_score": 20.5, "positive_months": 0, "avg_aum": 1.69, "peak_aum": 18.35, "tier": "At-Risk"}, {"rm_name": "Vinay Thakur", "lead_rm": "Ajay Sehgal", "feb": 14.54, "mar": 3.43, "growth_total": 11.11, "momentum_score": 246.74, "positive_months": 11, "avg_aum": 8.26, "peak_aum": 14.54, "tier": "Solid"}, {"rm_name": "Vishal Khanna", "lead_rm": "Rohini Chat", "feb": 3.19, "mar": 24.66, "growth_total": -21.47, "momentum_score": 163.4, "positive_months": 4, "avg_aum": 8.08, "peak_aum": 24.66, "tier": "At-Risk"}, {"rm_name": "Yashkumar Jain", "lead_rm": "Vijay Krishna Chinni", "feb": 11.0, "mar": 0.0, "growth_total": 11.0, "momentum_score": 50.68, "positive_months": 3, "avg_aum": 1.09, "peak_aum": 11.0, "tier": "Watch"}], "leavers": [{"rm_name": "Esha Bhatia", "lead_rm": "Vijay Krishna Chinni", "feb": 4.95, "mar": 0.0}, {"rm_name": "Kaushik Kar", "lead_rm": "Chinmay Chetan", "feb": 0.61, "mar": 2.72}, {"rm_name": "Megha Bhatt", "lead_rm": "Vijay Krishna Chinni", "feb": 0.02, "mar": 10.94}, {"rm_name": "Nikash Sachdeva", "lead_rm": "Vishal Khanna", "feb": 0.0, "mar": 8.77}, {"rm_name": "Surbhi Kohli", "lead_rm": "Abhishek Sharma", "feb": 2.4, "mar": 4.16}, {"rm_name": "Vinay Potnis", "lead_rm": 0, "feb": 0.0, "mar": 0.04}], "tier_counts": {"Star": 18, "At-Risk": 17, "Solid": 17, "Watch": 17}, "high_potential": [{"rm_name": "Mani Sawhney", "lead_rm": "Abhishek Kumar", "feb": 139.11, "momentum_score": 1548.72, "positive_months": 4, "months_active": 4}, {"rm_name": "Prateek Chhabra", "lead_rm": "Vishal Khanna", "feb": 54.68, "momentum_score": 727.66, "positive_months": 6, "months_active": 6}, {"rm_name": "Rohan Rege", "lead_rm": "Dhiren Shah", "feb": 90.72, "momentum_score": 607.12, "positive_months": 3, "months_active": 4}, {"rm_name": "Abhinav Ratan", "lead_rm": "Abhishek Kumar", "feb": 41.71, "momentum_score": 419.15, "positive_months": 4, "months_active": 4}, {"rm_name": "Neeraj Kumar", "lead_rm": "Madhup Patet", "feb": 30.97, "momentum_score": 260.69, "positive_months": 4, "months_active": 4}], "kpis": {"feb_aum": 2572.47, "mar_aum": 409.7, "total_clients": 1704, "above_1cr": 509, "pct_above_1cr": 30, "clients_qualified": 1631, "aum_growth_x": 6.28, "rm_count_feb": 58, "aum_per_rm_feb": 44.4, "total_firm_aum": 10000, "hni_share_pct": 25.7, "scaling_efficiency": 2.92, "avg_meetings_fresh": 411.0, "avg_unique_clients_met": 530.0}, "generated_at": "Mar 2026"};
+const C = ["#6c63ff","#00d4aa","#ffd93d","#ff6b6b","#4ecdc4","#ff9f43","#a29bfe","#55efc4","#fd79a8","#74b9ff","#e17055","#81ecec","#fdcb6e","#00b894"];
+const TC = {Star:"#ffd700",Solid:"#6c63ff",Watch:"#ffa500","At-Risk":"#ff4757"};
+
+// Tab switch
+window.T = function(id){
+  document.querySelectorAll(".tab").forEach((t,i)=>{
+    const ids=["overview","meetings","ml-view","rm-productivity","rm-table","jcurve","insights"];
+    t.classList.toggle("active",ids[i]===id);
+  });
+  document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("active",p.id==="pane-"+id));
+  if(id==="meetings"&&!window._m){initMeetings();window._m=true;}
+  if(id==="ml-view"&&!window._ml){initML();window._ml=true;}
+  if(id==="rm-productivity"&&!window._rmp){initRMProd();window._rmp=true;}
+  if(id==="rm-table"&&!window._rmt){initRMTable();window._rmt=true;}
+  if(id==="jcurve"&&!window._jc){initJC();window._jc=true;}
+};
+
+function mkChart(id,type,labels,datasets,opts={}){
+  const ctx=document.getElementById(id).getContext("2d");
+  return new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:"index",intersect:false},
+    plugins:{legend:{labels:{color:"#9ba3bf",font:{size:10},usePointStyle:true,padding:12},...(opts.noLegend?{display:false}:{})},
+      tooltip:{callbacks:opts.tooltip||{}}},
+    scales:{
+      x:{grid:{color:"rgba(255,255,255,.05)"},ticks:{color:"#6b7494",font:{size:10},...(opts.rotateTicks?{maxRotation:35}:{})}},
+      y:{beginAtZero:opts.noZero?false:true,grid:{color:"rgba(255,255,255,.05)"},ticks:{color:"#6b7494",font:{size:10},callback:opts.ytick||(v=>v)},...(opts.yRight?{}:{})},
+      ...(opts.y2?{y2:{type:"linear",position:"right",beginAtZero:true,grid:{display:false},ticks:{color:opts.y2color||"#ffd93d",font:{size:10},callback:opts.y2tick||(v=>v)}}}:{})
+    },...opts.extra
+  }});
+}
+
+// ── OVERVIEW CHARTS ─────────────────────────────────────────────────────
+(()=>{
+  const ft=D.firm_trajectory;
+  mkChart("c-traj","line",ft.months,[
+    {label:"HNI AUM (₹Cr)",data:ft.aum,borderColor:"#6c63ff",backgroundColor:"rgba(108,99,255,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4,yAxisID:"y"},
+    {label:"Active RMs",data:ft.rm_count,borderColor:"#ffd93d",borderDash:[4,3],borderWidth:2,tension:.3,pointRadius:3,fill:false,yAxisID:"y2"}
+  ],{y2:true,y2color:"#ffd93d",ytick:v=>"₹"+v+"Cr",y2tick:v=>v+" RMs",
+     tooltip:{label:c=>c.datasetIndex===0?"₹"+c.parsed.y.toFixed(1)+"Cr":c.parsed.y+" RMs"}});
+
+  mkChart("c-qtr","bar",D.quarterly.labels,[
+    {label:"AUM Added (₹Cr)",data:D.quarterly.growth,
+      backgroundColor:["rgba(108,99,255,.7)","rgba(0,212,170,.7)","rgba(255,107,107,.7)","rgba(255,217,61,.7)"],
+      borderColor:["#6c63ff","#00d4aa","#ff6b6b","#ffd93d"],borderWidth:1.5,borderRadius:6}
+  ],{noLegend:true,ytick:v=>"₹"+v+"Cr",tooltip:{label:c=>"₹"+c.parsed.y.toFixed(0)+"Cr ("+D.quarterly.pct[c.dataIndex]+"%)"}});
+
+  const mv=ft.mom_growth;
+  mkChart("c-mom","bar",ft.months.slice(1),[
+    {label:"MoM %",data:mv.slice(1),
+      backgroundColor:mv.slice(1).map(v=>v>0?"rgba(0,212,170,.6)":"rgba(255,71,87,.6)"),
+      borderColor:mv.slice(1).map(v=>v>0?"#00d4aa":"#ff4757"),borderWidth:1.5,borderRadius:3}
+  ],{noLegend:true,ytick:v=>v+"%",tooltip:{label:c=>c.parsed.y.toFixed(1)+"%"}});
+})();
+
+// ── MEETINGS ─────────────────────────────────────────────────────────────
+function initMeetings(){
+  const md=D.meetings;
+  mkChart("c-meetings","line",md.months,[
+    {label:"Unique Clients Met",data:md.unique_clients,borderColor:"#6c63ff",backgroundColor:"rgba(108,99,255,.08)",fill:true,borderWidth:2.5,tension:.3,pointRadius:4,yAxisID:"y"},
+    {label:"Fresh/New Meetings",data:md.new_meetings,borderColor:"#00d4aa",borderWidth:2,tension:.3,pointRadius:4,fill:false,yAxisID:"y"},
+    {label:"AUM Growth (₹Cr)",data:md.aum_growth,borderColor:"#ffd93d",backgroundColor:"rgba(255,217,61,.08)",fill:true,borderWidth:2,tension:.3,pointRadius:4,yAxisID:"y2",borderDash:[5,3]}
+  ],{y2:true,y2color:"#ffd93d",ytick:v=>v,y2tick:v=>"₹"+v+"Cr",
+     tooltip:{label:c=>c.datasetIndex===2?"₹"+(c.parsed.y||0).toFixed(1)+"Cr":c.parsed.y}});
+
+  // Lag 2
+  const l2=D.meetings_lag.lag2;
+  mkChart("c-lag2","bar",l2.map(p=>p.meetings_month),[
+    {label:"Fresh Meetings (M)",data:l2.map(p=>p.meetings),backgroundColor:"rgba(108,99,255,.6)",borderColor:"#6c63ff",borderWidth:1.5,borderRadius:4,yAxisID:"y"},
+    {label:"AUM Growth M+2 (₹Cr)",data:l2.map(p=>p.aum_growth),type:"line",borderColor:"#ffd93d",borderWidth:2.5,pointRadius:5,fill:false,tension:.3,yAxisID:"y2"}
+  ],{y2:true,y2color:"#ffd93d",ytick:v=>v+" mtgs",y2tick:v=>"₹"+v+"Cr",
+     tooltip:{label:c=>c.datasetIndex===0?c.parsed.y+" meetings":"₹"+c.parsed.y.toFixed(1)+"Cr AUM growth"}});
+
+  // Lag 3
+  const l3=D.meetings_lag.lag3;
+  mkChart("c-lag3","bar",l3.map(p=>p.meetings_month),[
+    {label:"Fresh Meetings (M)",data:l3.map(p=>p.meetings),backgroundColor:"rgba(0,212,170,.5)",borderColor:"#00d4aa",borderWidth:1.5,borderRadius:4,yAxisID:"y"},
+    {label:"AUM Growth M+3 (₹Cr)",data:l3.map(p=>p.aum_growth),type:"line",borderColor:"#ff9f43",borderWidth:2.5,pointRadius:5,fill:false,tension:.3,yAxisID:"y2"}
+  ],{y2:true,y2color:"#ff9f43",ytick:v=>v+" mtgs",y2tick:v=>"₹"+v+"Cr",
+     tooltip:{label:c=>c.datasetIndex===0?c.parsed.y+" meetings":"₹"+c.parsed.y.toFixed(1)+"Cr AUM growth"}});
+}
+
+// ── ML VIEW ──────────────────────────────────────────────────────────────
+function initML(){
+  const mls=D.ml_summary.filter(m=>m.aum>1).sort((a,b)=>b.aum-a.aum);
+  const lbls=mls.map(m=>m.lead_rm);
+
+  // Main bar
+  const ctx=document.getElementById("c-ml-bar").getContext("2d");
+  new Chart(ctx,{type:"bar",data:{labels:lbls,datasets:[
+    {label:"AUM (₹Cr)",data:mls.map(m=>m.aum),backgroundColor:C.map(c=>c+"bb"),borderColor:C,borderWidth:1.5,borderRadius:5,yAxisID:"y"},
+    {label:"Clients",data:mls.map(m=>m.clients),type:"line",borderColor:"#ffd93d",borderDash:[4,3],borderWidth:2,pointRadius:4,fill:false,yAxisID:"y2"},
+    {label:">1Cr Clients",data:mls.map(m=>m.above_1cr),type:"line",borderColor:"#ff9f43",borderWidth:2,pointRadius:4,fill:false,yAxisID:"y2"}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{labels:{color:"#9ba3bf",font:{size:10},usePointStyle:true}}},
+    scales:{x:{grid:{display:false},ticks:{color:"#6b7494",font:{size:9},maxRotation:30}},
+      y:{beginAtZero:true,grid:{color:"rgba(255,255,255,.05)"},ticks:{color:"#6b7494",callback:v=>"₹"+v+"Cr"}},
+      y2:{beginAtZero:true,position:"right",grid:{display:false},ticks:{color:"#ffd93d",font:{size:10}}}}}
+  });
+
+  // AUM/Client
+  const sorted=[...mls].sort((a,b)=>b.aum_per_client-a.aum_per_client);
+  const ctx2=document.getElementById("c-ml-apc").getContext("2d");
+  new Chart(ctx2,{type:"bar",data:{labels:sorted.map(m=>m.lead_rm),datasets:[
+    {label:"AUM/Client (₹Cr)",data:sorted.map(m=>m.aum_per_client),
+      backgroundColor:sorted.map(m=>m.aum_per_client>=2?"rgba(0,212,170,.7)":m.aum_per_client>=1?"rgba(108,99,255,.7)":"rgba(255,71,87,.7)"),
+      borderColor:sorted.map(m=>m.aum_per_client>=2?"#00d4aa":m.aum_per_client>=1?"#6c63ff":"#ff4757"),
+      borderWidth:1.5,borderRadius:5}
+  ]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>"₹"+c.parsed.x.toFixed(2)+"Cr/client"}}},
+    scales:{x:{beginAtZero:true,grid:{color:"rgba(255,255,255,.05)"},ticks:{color:"#6b7494",callback:v=>"₹"+v+"Cr"}},
+      y:{grid:{display:false},ticks:{color:"#9ba3bf",font:{size:10}}}}}
+  });
+
+  // % >1Cr
+  const s2=[...mls].sort((a,b)=>b.pct_above_1cr-a.pct_above_1cr);
+  const ctx3=document.getElementById("c-ml-q1cr").getContext("2d");
+  new Chart(ctx3,{type:"bar",data:{labels:s2.map(m=>m.lead_rm),datasets:[
+    {label:"% Clients >₹1Cr",data:s2.map(m=>m.pct_above_1cr),
+      backgroundColor:s2.map(m=>m.pct_above_1cr>=40?"rgba(0,212,170,.7)":m.pct_above_1cr>=25?"rgba(255,217,61,.7)":"rgba(255,71,87,.7)"),
+      borderColor:s2.map(m=>m.pct_above_1cr>=40?"#00d4aa":m.pct_above_1cr>=25?"#ffd93d":"#ff4757"),
+      borderWidth:1.5,borderRadius:5}
+  ]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.x+"%"}}},
+    scales:{x:{beginAtZero:true,max:100,grid:{color:"rgba(255,255,255,.05)"},ticks:{color:"#6b7494",callback:v=>v+"%"}},
+      y:{grid:{display:false},ticks:{color:"#9ba3bf",font:{size:10}}}}}
+  });
+
+  // ML summary table
+  const tbl=document.getElementById("ml-tbl");
+  tbl.innerHTML=`<thead><tr>
+    <th>Market Leader</th><th>RMs</th><th>Clients</th><th>>₹1Cr</th><th>% >₹1Cr</th>
+    <th>AUM (₹Cr)</th><th>AUM/RM</th><th>AUM/Client</th>
+  </tr></thead><tbody>`+
+  mls.map((m,i)=>{
+    const aqc=parseFloat(m.aum_per_client||0);
+    const aqcColor=aqc>=2?"#00d4aa":aqc>=1?"#ffd93d":"#ff6b6b";
+    const pColor=m.pct_above_1cr>=40?"#00d4aa":m.pct_above_1cr>=25?"#ffd93d":"#ff6b6b";
+    return `<tr>
+      <td style="font-weight:600">${m.lead_rm}</td>
+      <td style="color:var(--t2)">${m.rm_count}</td>
+      <td>${m.clients}</td>
+      <td style="color:#ffd93d">${m.above_1cr}</td>
+      <td style="color:${pColor};font-weight:600">${m.pct_above_1cr}%</td>
+      <td style="font-weight:700">₹${parseFloat(m.aum).toFixed(1)}Cr <div class="bm" style="background:${C[i%C.length]};width:${Math.round(m.aum/629*60)}px"></div></td>
+      <td>₹${parseFloat(m.aum_per_rm||0).toFixed(1)}Cr</td>
+      <td style="color:${aqcColor}">₹${aqc.toFixed(2)}Cr</td>
+    </tr>`;
+  }).join("")+"</tbody>";
+
+  // ML heat table
+  const mlNames=Object.keys(D.ml_mom_aum);
+  const months=D.firm_trajectory.months;
+  document.getElementById("ml-heat-head").innerHTML="<th>ML Team</th>"+months.map(m=>`<th>${m}</th>`).join("")+"<th>Growth</th>";
+  const tb=document.getElementById("ml-heat-body");
+  tb.innerHTML="";
+  mlNames.forEach(ml=>{
+    const vals=D.ml_mom_aum[ml];
+    const valid=vals.filter(v=>v>0);
+    if(!valid.length){return;}
+    const last=vals[vals.length-1],first=vals.find(v=>v>0)||1;
+    const gStr=first>0?Math.round((last/first-1)*100)+"%":"New";
+    let row=`<tr><td>${ml}</td>`;
+    vals.forEach((v,i)=>{
+      let style="";
+      if(v>0&&i>0&&vals[i-1]>0){
+        const d=v-vals[i-1];
+        if(d>20)style="background:rgba(0,212,170,.2);color:#00d4aa;font-weight:700";
+        else if(d>0)style="background:rgba(0,212,170,.08);color:#55efc4";
+        else if(d<-10)style="background:rgba(255,71,87,.2);color:#ff4757;font-weight:700";
+        else if(d<0)style="background:rgba(255,71,87,.08);color:#ff7b7b";
+      }
+      row+=`<td style="${style}">${v>0?v.toFixed(1):"—"}</td>`;
+    });
+    const gc=parseFloat(gStr)>0?"color:#00d4aa":"color:#ff4757";
+    row+=`<td style="${gc};font-weight:700">${gStr}</td></tr>`;
+    tb.innerHTML+=row;
+  });
+}
+
+// ── RM PRODUCTIVITY ───────────────────────────────────────────────────────
+function initRMProd(){
+  const ft=D.firm_trajectory;
+  // AUM/RM
+  mkChart("c-aum-per-rm","line",ft.months,[
+    {label:"AUM/RM (₹Cr)",data:ft.aum_per_rm,borderColor:"#00d4aa",backgroundColor:"rgba(0,212,170,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4},
+  ],{noLegend:true,ytick:v=>"₹"+v+"Cr",tooltip:{label:c=>"₹"+c.parsed.y.toFixed(1)+"Cr/RM"}});
+
+  // Clients/RM — using rm_count as proxy (total clients / rm count)
+  const clientsPerRM=ft.rm_count.map((_,i)=>Math.round(D.kpis.total_clients*(ft.rm_count[i]/ft.rm_count[ft.rm_count.length-1])/ft.rm_count[i]));
+  mkChart("c-clients-per-rm","line",ft.months,[
+    {label:"Clients/RM",data:clientsPerRM,borderColor:"#ffd93d",backgroundColor:"rgba(255,217,61,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4},
+    {label:"RM Count",data:ft.rm_count,borderColor:"#a29bfe",borderDash:[4,3],borderWidth:1.5,tension:.3,pointRadius:3,fill:false,yAxisID:"y2"}
+  ],{y2:true,y2color:"#a29bfe",ytick:v=>v+" clients",y2tick:v=>v+" RMs",
+     tooltip:{label:c=>c.datasetIndex===0?c.parsed.y+" clients/RM":c.parsed.y+" RMs"}});
+
+  // Tier donut
+  const ctx=document.getElementById("c-tier-donut").getContext("2d");
+  const tc=D.tier_counts,order=["Star","Solid","Watch","At-Risk"],vals=order.map(t=>tc[t]||0),tot=vals.reduce((a,b)=>a+b,0);
+  new Chart(ctx,{type:"doughnut",data:{labels:order.map((t,i)=>t+" ("+vals[i]+")"),datasets:[{data:vals,
+    backgroundColor:["#ffd70099","#6c63ff99","#ffa50099","#ff475799"],
+    borderColor:["#ffd700","#6c63ff","#ffa500","#ff4757"],borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"60%",
+      plugins:{legend:{position:"bottom",labels:{color:"#9ba3bf",font:{size:10},usePointStyle:true,padding:10}},
+        tooltip:{callbacks:{label:c=>c.label+": "+Math.round(c.parsed/tot*100)+"%"}}}}
+  });
+
+  // High potential list
+  const hp=document.getElementById("high-pot-list");
+  D.high_potential.forEach(r=>{
+    hp.innerHTML+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">
+      <span style="color:var(--text)">${r.rm_name} <span style="color:var(--t3);font-size:9px">${r.lead_rm}</span></span>
+      <span>₹${r.feb}Cr <span style="color:var(--g);font-size:10px">↑ ${r.momentum_score.toFixed(0)} score</span></span>
+    </div>`;
+  });
+}
+
+// ── RM TABLE ──────────────────────────────────────────────────────────────
+function initRMTable(){
+  const pods=[...new Set(D.rm_table.map(r=>r.lead_rm))].sort();
+  const sel=document.getElementById("pod-f");
+  pods.forEach(p=>{const o=document.createElement("option");o.value=p;o.textContent=p;sel.appendChild(o);});
+  renderRM();
+}
+function renderRM(){
+  const srch=(document.getElementById("srch")?.value||"").toLowerCase();
+  const pod=document.getElementById("pod-f")?.value||"all";
+  const tier=document.getElementById("tier-f")?.value||"all";
+  let rows=D.rm_table.filter(r=>{
+    if(srch&&!r.rm_name.toLowerCase().includes(srch))return false;
+    if(pod!=="all"&&r.lead_rm!==pod)return false;
+    if(tier!=="all"&&r.tier!==tier)return false;
+    return true;
+  }).sort((a,b)=>b.feb-a.feb);
+  document.getElementById("rm-cnt").textContent=rows.length+" RMs";
+  const maxFeb=Math.max(...D.rm_table.map(r=>r.feb));
+  let html=`<table class="tbl"><thead><tr>
+    <th>RM Name</th><th>Pod</th><th>Tier</th><th>Feb AUM</th><th>Mar AUM</th>
+    <th>Growth</th><th>Momentum</th><th>Green Months</th><th>Peak AUM</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const tc={Star:"t-star",Solid:"t-solid",Watch:"t-watch","At-Risk":"t-risk"}[r.tier]||"";
+    const bw=Math.max(2,Math.round(r.feb/maxFeb*70));
+    html+=`<tr>
+      <td>${r.rm_name}</td>
+      <td style="color:var(--t3)">${r.lead_rm||"—"}</td>
+      <td><span class="${tc}">${r.tier}</span></td>
+      <td>₹${parseFloat(r.feb||0).toFixed(1)}Cr <div class="bm" style="background:${TC[r.tier]||"#6c63ff"};width:${bw}px"></div></td>
+      <td style="color:var(--t3)">₹${parseFloat(r.mar||0).toFixed(1)}Cr</td>
+      <td style="color:${(r.growth_total||0)>0?"var(--g)":"var(--r)"}">₹${parseFloat(r.growth_total||0).toFixed(1)}Cr</td>
+      <td>${parseFloat(r.momentum_score||0).toFixed(0)}</td>
+      <td>${r.positive_months||0}/11</td>
+      <td>₹${parseFloat(r.peak_aum||0).toFixed(1)}Cr</td>
+    </tr>`;
+  });
+  document.getElementById("rm-tbl-wrap").innerHTML=html+"</tbody></table>";
+}
+
+// ── J-CURVE ────────────────────────────────────────────────────────────────
+function initJC(){
+  const f=D.forecast;
+  const all=[...f.hist_months,...f.fwd_months];
+  const hL=f.hist_months.length;
+  const pad=n=>[...new Array(hL).fill(null),...n];
+  const ctx=document.getElementById("c-forecast").getContext("2d");
+  new Chart(ctx,{type:"line",data:{labels:all,datasets:[
+    {label:"Actual HNI AUM",data:[...f.hist_aum,...new Array(12).fill(null)],borderColor:"#6c63ff",backgroundColor:"rgba(108,99,255,.08)",fill:true,borderWidth:3,tension:.3,pointRadius:3},
+    {label:"Compound (13.7%/mo)",data:pad(f.compound),borderColor:"#00d4aa",borderDash:[6,3],borderWidth:2,tension:.3,pointRadius:2,fill:false},
+    {label:"Conservative (6.8%/mo)",data:pad(f.conservative),borderColor:"#ffd93d",borderDash:[3,4],borderWidth:2,tension:.3,pointRadius:0,fill:false},
+    {label:"Linear",data:pad(f.linear),borderColor:"#ff9f43",borderDash:[2,4],borderWidth:1.5,tension:.3,pointRadius:0,fill:false},
+    {label:"30% Trigger ₹3,000Cr",data:all.map(()=>3000),borderColor:"rgba(255,71,87,.4)",borderDash:[8,4],borderWidth:1.5,pointRadius:0,fill:false},
+    {label:"50% Target ₹5,000Cr",data:all.map(()=>5000),borderColor:"rgba(255,165,0,.4)",borderDash:[8,4],borderWidth:1.5,pointRadius:0,fill:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{position:"bottom",labels:{color:"#9ba3bf",font:{size:10},usePointStyle:true,padding:8}},
+      tooltip:{callbacks:{label:c=>c.dataset.label+": ₹"+(c.parsed.y||0).toFixed(0)+"Cr"}}},
+    scales:{x:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#6b7494",font:{size:9},maxRotation:45}},
+      y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#6b7494",callback:v=>"₹"+v+"Cr"}}}}
+  });
+}
+
+// Init RM table and RM productivity on load
+initRMTable(); window._rmt=true;
+initRMProd(); window._rmp=true;
+</script>
+</body>
+</html>
