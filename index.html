@@ -292,6 +292,13 @@ table.tbl tbody tr:hover{background:rgba(255,255,255,.03)}
 
 <!-- ── RM PRODUCTIVITY ── -->
 <div class="pane" id="pane-rm-productivity">
+  <!-- Shared filter for top trend charts -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:9px">
+    <span style="font-size:11px;color:var(--t3);font-weight:600">Filter trend charts:</span>
+    <select id="prod-team-f" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:5px;font-size:11px" onchange="renderProdCharts()"><option value="all">All Teams (Firm)</option></select>
+    <select id="prod-ml-f" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:5px;font-size:11px" onchange="renderProdCharts()"><option value="all">All MLs</option></select>
+    <span id="prod-filter-label" style="font-size:10px;color:var(--t3);margin-left:4px"></span>
+  </div>
   <div class="g2">
     <div class="card">
       <h3>⚡ AUM per RM — Monthly Trend</h3>
@@ -324,12 +331,17 @@ table.tbl tbody tr:hover{background:rgba(255,255,255,.03)}
   <div class="card">
     <h3>🏆 RM Tier Distribution + High Potential</h3>
     <div class="sub">Composite score = 40% growth rank + 35% momentum + 25% consistency</div>
-    <div class="g2" style="margin-bottom:0">
-      <canvas id="c-tier-donut" style="max-height:220px"></canvas>
-      <div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:0">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px;align-self:flex-start">Tier Breakdown</div>
+        <div style="position:relative;width:100%;height:220px">
+          <canvas id="c-tier-donut"></canvas>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0">
         <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--t2)">🌱 Breakout Candidates</div>
-        <div id="high-pot-list"></div>
-        <div class="callout" style="margin-top:8px"><strong>These RMs joined after Jul-25</strong> but are already in the top-50% on momentum. With 6 more months of support, each has the profile to reach ₹150Cr+ AUM.</div>
+        <div id="high-pot-list" style="flex:1"></div>
+        <div class="callout" style="margin-top:10px"><strong>These RMs joined after Jul-25</strong> but are already in the top-50% on momentum. With 6 more months of support, each has the profile to reach ₹150Cr+ AUM.</div>
       </div>
     </div>
   </div>
@@ -599,20 +611,31 @@ function initML(){
 }
 
 // ── RM PRODUCTIVITY ───────────────────────────────────────────────────────
+window._prodCharts={aum:null,cli:null};
 function initRMProd(){
-  const ft=D.firm_trajectory;
-  // AUM/RM
-  mkChart("c-aum-per-rm","line",ft.months,[
-    {label:"AUM/RM (₹Cr)",data:ft.aum_per_rm,borderColor:"#00d4aa",backgroundColor:"rgba(0,212,170,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4},
-  ],{noLegend:true,ytick:v=>"₹"+v+"Cr",tooltip:{label:c=>"₹"+c.parsed.y.toFixed(1)+"Cr/RM"}});
-
-  // Clients/RM — using rm_count as proxy (total clients / rm count)
-  const clientsPerRM=ft.rm_count.map((_,i)=>Math.round(D.kpis.total_clients*(ft.rm_count[i]/ft.rm_count[ft.rm_count.length-1])/ft.rm_count[i]));
-  mkChart("c-clients-per-rm","line",ft.months,[
-    {label:"Clients/RM",data:clientsPerRM,borderColor:"#ffd93d",backgroundColor:"rgba(255,217,61,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4},
-    {label:"RM Count",data:ft.rm_count,borderColor:"#a29bfe",borderDash:[4,3],borderWidth:1.5,tension:.3,pointRadius:3,fill:false,yAxisID:"y2"}
-  ],{y2:true,y2color:"#a29bfe",ytick:v=>v+" clients",y2tick:v=>v+" RMs",
-     tooltip:{label:c=>c.datasetIndex===0?c.parsed.y+" clients/RM":c.parsed.y+" RMs"}});
+  // Populate team filter
+  const tSel=document.getElementById("prod-team-f");
+  Object.keys(D.teams||{}).sort().forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;tSel.appendChild(o);});
+  tSel.onchange=()=>{
+    // When team changes, cascade ML options
+    const team=tSel.value;
+    const mlSel=document.getElementById("prod-ml-f");
+    mlSel.innerHTML='<option value="all">All MLs</option>';
+    if(team!=="all"){
+      const teamMLs=D.teams[team]||[];
+      teamMLs.forEach(ml=>{const o=document.createElement("option");o.value=ml;o.textContent=ml;mlSel.appendChild(o);});
+    } else {
+      const allMLs=[...new Set(D.rm_table.map(r=>r.lead_rm).filter(Boolean))].sort();
+      allMLs.forEach(ml=>{const o=document.createElement("option");o.value=ml;o.textContent=ml;mlSel.appendChild(o);});
+    }
+    renderProdCharts();
+  };
+  // Populate ML filter with all MLs initially
+  const mlSel=document.getElementById("prod-ml-f");
+  const allMLs=[...new Set(D.rm_table.map(r=>r.lead_rm).filter(Boolean))].sort();
+  allMLs.forEach(ml=>{const o=document.createElement("option");o.value=ml;o.textContent=ml;mlSel.appendChild(o);});
+  mlSel.onchange=renderProdCharts;
+  renderProdCharts();
 
   // Tier donut
   const ctx=document.getElementById("c-tier-donut").getContext("2d");
@@ -628,10 +651,89 @@ function initRMProd(){
   // High potential list
   const hp=document.getElementById("high-pot-list");
   D.high_potential.forEach(r=>{
-    hp.innerHTML+=`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">
-      <span style="color:var(--text)">${r.rm_name} <span style="color:var(--t3);font-size:9px">${r.lead_rm}</span></span>
-      <span>₹${r.feb}Cr <span style="color:var(--g);font-size:10px">↑ ${r.momentum_score.toFixed(0)} score</span></span>
+    hp.innerHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px">
+      <div>
+        <span style="color:var(--text);font-weight:600">${r.rm_name}</span>
+        <span style="color:var(--t3);font-size:9px;display:block;margin-top:1px">${r.lead_rm}</span>
+      </div>
+      <div style="text-align:right">
+        <span style="color:var(--g);font-weight:600">₹${r.feb}Cr</span>
+        <span style="color:var(--t3);font-size:9px;display:block">Score: ${r.momentum_score.toFixed(0)}</span>
+      </div>
     </div>`;
+  });
+}
+
+// ── PROD TREND CHARTS (filterable) ──────────────────────────────────────────
+function renderProdCharts(){
+  const team=document.getElementById("prod-team-f")?.value||"all";
+  const ml=document.getElementById("prod-ml-f")?.value||"all";
+  const ft=D.firm_trajectory;
+
+  let aumData, cliData, rmCountData, label;
+
+  if(team==="all"&&ml==="all"){
+    // Firm-level: use precomputed trajectory
+    aumData=ft.aum_per_rm;
+    rmCountData=ft.rm_count.map(Number);
+    const totalCli=D.kpis.total_clients;
+    const lastRM=Number(ft.rm_count[ft.rm_count.length-1]);
+    cliData=ft.rm_count.map((_,i)=>Math.round(totalCli*(Number(ft.rm_count[i])/lastRM)/Number(ft.rm_count[i])));
+    label="Firm-wide average";
+  } else {
+    // Filter by team or ML
+    const teamMLs=ml!=="all"?[ml]:(team!=="all"?(D.teams[team]||[]):null);
+    if(!teamMLs){aumData=ft.aum_per_rm;rmCountData=ft.rm_count.map(Number);const totalCli=D.kpis.total_clients;const lastRM=Number(ft.rm_count[ft.rm_count.length-1]);cliData=ft.rm_count.map((_,i)=>Math.round(totalCli*(Number(ft.rm_count[i])/lastRM)/Number(ft.rm_count[i])));label="Firm-wide";}
+    else {
+      // Get monthly AUM for selected MLs from ml_mom_aum
+      const months=ft.months;
+      const teamAUM=months.map((_,mi)=>
+        teamMLs.reduce((s,tml)=>{const d=D.ml_mom_aum[tml]||[];return s+(d[mi]||0);},0)
+      );
+      // RM count for team from rm_table
+      const teamRMs=D.rm_table.filter(r=>teamMLs.some(tml=>r.lead_rm===tml||r.lead_rm&&r.lead_rm.toLowerCase()===tml.toLowerCase()));
+      const rmCnt=Math.max(teamRMs.length,1);
+      // Scale RM count backwards (assume current count is feb count)
+      const rmScale=ft.rm_count.map(n=>Math.max(1,Math.round(rmCnt*(Number(n)/Number(ft.rm_count[ft.rm_count.length-1])))));
+      aumData=teamAUM.map((a,i)=>+(a/rmScale[i]).toFixed(2));
+      rmCountData=rmScale;
+      // Clients proportional to AUM ratio
+      const teamFebAUM=teamAUM[teamAUM.length-1]||1;
+      const firmFebAUM=ft.aum[ft.aum.length-1]||1;
+      const ratio=teamFebAUM/firmFebAUM;
+      const teamTotalCli=Math.round(D.kpis.total_clients*ratio);
+      cliData=rmScale.map(c=>Math.max(1,Math.round(teamTotalCli/c)));
+      label=ml!=="all"?ml+" pod":(team+" team ("+teamMLs.join(", ")+")");
+    }
+  }
+
+  // Update filter label
+  const lbl=document.getElementById("prod-filter-label");
+  if(lbl) lbl.textContent=label?("Showing: "+label):"";
+
+  // Destroy and recreate charts
+  if(window._prodCharts.aum){window._prodCharts.aum.destroy();window._prodCharts.aum=null;}
+  if(window._prodCharts.cli){window._prodCharts.cli.destroy();window._prodCharts.cli=null;}
+
+  const ctx1=document.getElementById("c-aum-per-rm")?.getContext("2d");
+  if(ctx1) window._prodCharts.aum=new Chart(ctx1,{type:"line",data:{labels:ft.months,datasets:[
+    {label:"AUM/RM (₹Cr)",data:aumData,borderColor:"#00d4aa",backgroundColor:"rgba(0,212,170,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>"₹"+c.parsed.y.toFixed(1)+"Cr/RM"}}},
+    scales:{x:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#6b7494",font:{size:9},maxRotation:45}},
+      y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#6b7494",callback:v=>"₹"+v+"Cr"}}}}
+  });
+
+  const ctx2=document.getElementById("c-clients-per-rm")?.getContext("2d");
+  if(ctx2) window._prodCharts.cli=new Chart(ctx2,{type:"line",data:{labels:ft.months,datasets:[
+    {label:"Clients/RM",data:cliData,borderColor:"#ffd93d",backgroundColor:"rgba(255,217,61,.08)",fill:true,borderWidth:2.5,tension:.4,pointRadius:4},
+    {label:"RM Count",data:rmCountData,borderColor:"#a29bfe",borderDash:[4,3],borderWidth:1.5,tension:.3,pointRadius:3,fill:false,yAxisID:"y2"},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{position:"bottom",labels:{color:"#9ba3bf",font:{size:10},usePointStyle:true,padding:8}},
+      tooltip:{callbacks:{label:c=>c.datasetIndex===0?c.parsed.y+" clients/RM":c.parsed.y+" RMs"}}},
+    scales:{x:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#6b7494",font:{size:9},maxRotation:45}},
+      y:{grid:{color:"rgba(255,255,255,.04)"},ticks:{color:"#6b7494",callback:v=>v+" clients"}},
+      y2:{position:"right",grid:{drawOnChartArea:false},ticks:{color:"#a29bfe",callback:v=>v+" RMs"}}}}
   });
 }
 
